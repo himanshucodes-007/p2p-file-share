@@ -20,10 +20,7 @@ wss.on("connection", (socket) => {
 
     if (data.type === "create-room") {
       const roomId = generateRoomId();
-      rooms[roomId] = {
-        host: socket,
-      };
-
+    
       socket.send(
         JSON.stringify({
           type: "room-created",
@@ -31,10 +28,17 @@ wss.on("connection", (socket) => {
         }),
       );
 
+      rooms[roomId] = {
+        host: socket,
+      };
+
+      socket.roomId = roomId;
+      socket.role = "host";
+
       console.log(rooms);
     }
 
-    if (data.type === "join-room") {
+    else if (data.type === "join-room") {
         const room = rooms[data.roomId];
 
         if(!room){
@@ -46,7 +50,21 @@ wss.on("connection", (socket) => {
             return;
         }
 
+        if (room.peer) {
+          socket.send(
+            JSON.stringify({
+              type: "error",
+              message: "Room is full",
+            }),
+          );
+
+          return;
+        }
+
         room.peer = socket;
+        socket.roomId = data.roomId;
+        socket.role = "peer";
+
 
         room.host.send(JSON.stringify({
             type: "peer-joined",
@@ -59,16 +77,30 @@ wss.on("connection", (socket) => {
             message: "You have joined the room"
         }));
 
-        if(room.peer){
-          socket.send(JSON.stringify({
-            type: "error",
-            message: "Room is full"
-          }));
-
-          return;
-        }
-
         console.log(rooms);
+    }
+
+    else if (data.type === "signal") {
+      const room = rooms[socket.roomId];
+
+      if (!room) return;
+
+      let target;
+
+      if (socket.role === "host") {
+        target = room.peer;
+      } else {
+        target = room.host;
+      }
+
+      if (target) {
+        target.send(
+          JSON.stringify({
+            type: "signal",
+            signal: data.signal,
+          }),
+        );
+      }
     }
 
 
