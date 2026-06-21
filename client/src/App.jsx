@@ -9,44 +9,44 @@ function App() {
   const [connected, setConnected] = useState(false);
 
   const wsRef = useRef(null);
-  // const peerRef = useRef(null);
+  const peerRef = useRef(null);
 
-  // const initializePeer = (initiator) => {
-  //   const peer = new Peer({
-  //     initiator,
-  //     trickle: false,
-  //   });
+  const initializePeer = (initiator) => {
+    const peer = new Peer({
+      initiator,
+      trickle: false,
+    });
 
-  //   peerRef.current = peer;
+    peerRef.current = peer;
 
-  //   peer.on("signal", (data) => {
-  //     console.log("Generated Signal:", data);
+    peer.on("signal", (data) => {
+      console.log("Generated Signal:", data);
 
-  //     wsRef.current.send(
-  //       JSON.stringify({
-  //         type: "signal",
-  //         signal: data,
-  //       }),
-  //     );
-  //   });
+      wsRef.current.send(
+        JSON.stringify({
+          type: "signal",
+          signal: data,
+        }),
+      );
+    });
 
-  //   peer.on("connect", () => {
-  //     console.log("WEBRTC CONNECTED");
-  //     setConnected(true);
+    peer.on("connect", () => {
+      console.log("WEBRTC CONNECTED");
+      setConnected(true);
 
-  //     if (initiator) {
-  //       peer.send("Hello Peer!");
-  //     }
-  //   });
+      if (initiator) {
+        peer.send("Hello Peer!");
+      }
+    });
 
-  //   peer.on("data", (data) => {
-  //     console.log("Received:", data.toString());
-  //   });
+    peer.on("data", (data) => {
+      console.log("Received:", data.toString());
+    });
 
-  //   peer.on("error", (err) => {
-  //     console.error("PEER ERROR:", err);
-  //   });
-  // };
+    peer.on("error", (err) => {
+      console.error("PEER ERROR:", err);
+    });
+  };
 
   useEffect(() => {
     const ws = new WebSocket("ws://localhost:8080");
@@ -64,26 +64,27 @@ function App() {
 
       if (data.type === "room-created") {
         setCreatedRoomId(data.roomId);
-        // initializePeer(true);
       }
 
       if (data.type === "peer-joined") {
         console.log("A peer joined your room");
+
+        initializePeer(true);
       }
 
       if (data.type === "joined-room") {
         console.log("Successfully joined room");
-        // initializePeer(false);
+        initializePeer(false);
       }
 
-      // if (data.type === "signal") {
-      //   if (!peerRef.current) {
-      //     console.log("Peer not initialized yet");
-      //     return;
-      //   }
+      if (data.type === "signal") {
+        if (!peerRef.current) {
+          console.log("Peer not initialized yet");
+          return;
+        }
 
-      //   peerRef.current.signal(data.signal);
-      // }
+        peerRef.current.signal(data.signal);
+      }
 
       if (data.type === "error") {
         alert(data.message);
@@ -161,7 +162,7 @@ function App() {
         onChange={(e) => setRoomId(e.target.value.toUpperCase())}
       />
       <button onClick={joinRoom}>Join Room</button>
-      
+
       <button
         onClick={() => {
           const peer = new Peer({

@@ -20,7 +20,7 @@ wss.on("connection", (socket) => {
 
     if (data.type === "create-room") {
       const roomId = generateRoomId();
-    
+
       socket.send(
         JSON.stringify({
           type: "room-created",
@@ -36,54 +36,58 @@ wss.on("connection", (socket) => {
       socket.role = "host";
 
       console.log(rooms);
-    }
+    } else if (data.type === "join-room") {
+      const room = rooms[data.roomId];
 
-    else if (data.type === "join-room") {
-        const room = rooms[data.roomId];
+      if (!room) {
+        socket.send(
+          JSON.stringify({
+            type: "error",
+            message: "Room not found",
+          }),
+        );
 
-        if(!room){
-            socket.send(JSON.stringify({
-                type: "error",
-                message: "Room not found"
-            }));
+        return;
+      }
 
-            return;
-        }
+      if (room.peer) {
+        socket.send(
+          JSON.stringify({
+            type: "error",
+            message: "Room is full",
+          }),
+        );
 
-        if (room.peer) {
-          socket.send(
-            JSON.stringify({
-              type: "error",
-              message: "Room is full",
-            }),
-          );
+        return;
+      }
 
-          return;
-        }
+      room.peer = socket;
+      socket.roomId = data.roomId;
+      socket.role = "peer";
 
-        room.peer = socket;
-        socket.roomId = data.roomId;
-        socket.role = "peer";
+      room.host.send(
+        JSON.stringify({
+          type: "peer-joined",
+          message: "A peer has joined your room",
+        }),
+      );
 
+      socket.send(
+        JSON.stringify({
+          type: "joined-room",
+          roomId: data.roomId,
+          message: "You have joined the room",
+        }),
+      );
 
-        room.host.send(JSON.stringify({
-            type: "peer-joined",
-            message: "A peer has joined your room"
-        }));
-
-        socket.send(JSON.stringify({
-            type: "joined-room",
-            roomId: data.roomId,
-            message: "You have joined the room"
-        }));
-
-        console.log(rooms);
-    }
-
-    else if (data.type === "signal") {
+      console.log(rooms);
+    } else if (data.type === "signal") {
       const room = rooms[socket.roomId];
 
-      if (!room) return;
+      if (!room) {
+        console.log("Room not found for signal");
+        return;
+      }
 
       let target;
 
@@ -94,12 +98,16 @@ wss.on("connection", (socket) => {
       }
 
       if (target) {
+        console.log("Forwarding signal:", data.signal.type);
+
         target.send(
           JSON.stringify({
             type: "signal",
             signal: data.signal,
           }),
         );
+      } else {
+        console.log("No target available for signal:", data.signal.type);
       }
     }
 

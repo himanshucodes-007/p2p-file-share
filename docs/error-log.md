@@ -170,3 +170,84 @@ Successfully generated:
   sdp: "..."
 }
 ```
+## Error #3
+
+### Problem
+
+Offer was generated but peer never received it.
+
+### Symptoms
+
+Host generated:
+
+```text
+Generated Signal: offer
+```
+
+But peer never generated:
+
+```text
+Generated Signal: answer
+```
+
+### Cause
+
+Host created WebRTC offer immediately after room creation.
+
+At that moment:
+
+```js
+room = {
+  host: socket
+}
+```
+
+No peer existed.
+
+Server printed:
+
+```text
+No target available for signal: offer
+```
+
+Offer was dropped.
+
+### Wrong Flow
+
+Create Room
+↓
+Generate Offer
+↓
+Peer Joins
+
+### Correct Flow
+
+Create Room
+↓
+Peer Joins
+↓
+Generate Offer
+
+### Fix
+
+Moved:
+
+```js
+initializePeer(true)
+```
+
+from:
+
+```js
+room-created
+```
+
+to:
+
+```js
+peer-joined
+```
+
+### Result
+
+Offer successfully forwarded and peer generated answer.
