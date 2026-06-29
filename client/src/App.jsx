@@ -7,6 +7,7 @@ function App() {
   const [createdRoomId, setCreatedRoomId] = useState("");
   const [role, setRole] = useState(null);
   const [connected, setConnected] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
 
   const wsRef = useRef(null);
   const peerRef = useRef(null);
@@ -40,7 +41,15 @@ function App() {
     });
 
     peer.on("data", (data) => {
-      console.log("Received:", data.toString());
+      if (typeof data === "string") {
+        console.log("Received Message:", data);
+        return;
+      }
+
+      console.log("Received Binary Data");
+      console.log(data);
+
+      console.log("Received Size:", data.byteLength, "bytes");
     });
 
     peer.on("error", (err) => {
@@ -140,6 +149,34 @@ function App() {
     );
   };
 
+  const sendFile = () => {
+    if (!connected) {
+      alert("Peer is not connected yet!");
+      return;
+    }
+
+    if (!selectedFile) {
+      alert("Please select a file first!");
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      console.log("File Read Successfully");
+
+      const buffer = reader.result;
+
+      console.log(buffer);
+
+      peerRef.current.send(buffer);
+
+      console.log("File sent successfully");
+    };
+
+    reader.readAsArrayBuffer(selectedFile);
+  };
+
   return (
     <div
       style={{
@@ -162,6 +199,27 @@ function App() {
         onChange={(e) => setRoomId(e.target.value.toUpperCase())}
       />
       <button onClick={joinRoom}>Join Room</button>
+
+      <br />
+      <br />
+
+      <input
+        type="file"
+        onChange={(e) => {
+          const file = e.target.files[0];
+
+          if (!file) return;
+
+          setSelectedFile(file);
+
+          console.log("Selected File:", file);
+        }}
+      />
+
+      <br />
+      <br />
+
+      <button onClick={sendFile}>Send File</button>
 
       <button
         onClick={() => {
